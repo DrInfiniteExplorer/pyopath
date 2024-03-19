@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyOPath"
+authors = [
+    { name = "Pierre LeMoine", email = "pypi@luben.se"},
+]
+description = "Querying object structures neatly"
+readme = "README.md"
+license = {file = "LICENSE"}
+
+requires-python = ">=3.12"
+keywords = ["objpath"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+[project.urls]
+
+[tool.setuptools_scm]
+local_scheme = 'no-local-version'
+version_scheme = 'no-guess-dev'
+
+[tool.ruff]
+line-length = 120
+[tool.ruff.lint]
+[tool.ruff.format]
