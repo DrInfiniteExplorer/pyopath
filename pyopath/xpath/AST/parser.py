@@ -1,6 +1,6 @@
 import ply.yacc
 
-from pyopath.AST.ast import (
+from pyopath.xpath.AST.ast import (
     AnyKindTest,
     AxisStep,
     Expressions,
@@ -11,7 +11,7 @@ from pyopath.AST.ast import (
     PostfixExpr,
     Predicate,
 )
-from pyopath.AST.lexer import PathLexer
+from pyopath.xpath.AST.lexer import PathLexer
 
 # https://www.w3.org/TR/xpath-31/#id-expressions
 

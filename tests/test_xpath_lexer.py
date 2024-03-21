@@ -2,7 +2,7 @@ from typing import Any, Sequence, Tuple
 
 import pytest
 
-from pyopath.AST.lexer import lex
+from pyopath.xpath.AST.lexer import lex
 
 test_cases: Sequence[Tuple[str, Any]] = (
     ("a", (("EQNAME", "a"),)),

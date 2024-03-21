@@ -11,12 +11,12 @@ class PathyInterface(ABC): ...
 if sys.version_info >= (3, 10):
     import inspect
 
-    def get_annotations(typ):
+    def get_annotations(typ: type):
         return inspect.get_annotations(typ)
 else:
 
     def get_annotations(typ: type) -> Dict[str, type]:
-        return getattr(typ, "__annotations__", None)  # type: ignore
+        return getattr(typ, "__annotations__", {})  # type: ignore
 
 
 def is_optional(typ: type) -> bool:

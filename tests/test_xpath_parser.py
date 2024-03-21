@@ -2,7 +2,7 @@ from typing import Any, Sequence, Tuple
 
 import pytest
 
-from pyopath.AST.ast import (
+from pyopath.xpath.AST.ast import (
     AnyKindTest,
     AxisStep,
     Literal,
@@ -12,8 +12,8 @@ from pyopath.AST.ast import (
     PostfixExpr,
     Predicate,
 )
-from pyopath.AST.lexer import lex
-from pyopath.AST.parser import parse
+from pyopath.xpath.AST.lexer import lex
+from pyopath.xpath.AST.parser import parse
 
 test_cases: Sequence[Tuple[str, Any]] = (
     # Basic axes and axes shortcuts
