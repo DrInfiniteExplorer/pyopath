@@ -424,7 +424,8 @@ class PathParser:
         ParenthesizedExpr : '(' ')'
                           | '(' Expr ')'
         """
-        p[0] = ("PARENTHESIZED", p[1])
+        # Parens are only needed to order things while building AST
+        p[0] = p[1]
 
     def p_FunctionCall(self, p):
         """
