@@ -1,11 +1,12 @@
 import sys
 from abc import ABC
-from typing import Any, Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
-from typing_extensions import TypeAlias, get_args, get_origin
+from typing_extensions import TypeAlias, dataclass_transform, get_args, get_origin
 
 
-class PathyInterface(ABC): ...
+class ASTNode(ABC): ...
 
 
 if sys.version_info >= (3, 10):
@@ -25,169 +26,159 @@ def is_optional(typ: type) -> bool:
     return origin is Union and type(None) in args
 
 
-def Pretty(*members: str):
-    def stringify(a: Any):
-        if isinstance(a, str):
-            return f"'{a}'"
-        return str(a)
+def stringify(a: Any):
+    if isinstance(a, str):
+        return f"'{a}'"
+    return str(a)
+
+
+T = TypeVar("T", bound=type)
+
+
+@dataclass_transform()
+def Pretty(cls: T) -> T:
+    # Do actual dataclass init etc, with some extra lines to make the type checker behave, since dataclass ISNT marked with @dataclass_transform
+    klass = type(cls)
+    cls = dataclass(cls)  # type: ignore
+    assert isinstance(cls, klass)
 
     annotations: Dict[str, type] = {}
+    members: Tuple[str, ...] = tuple()
+    annotations = get_annotations(cls)
+    if annotations:
+        members = tuple(annotations.keys())
 
-    def wrappy(cls: type):
-        nonlocal members, annotations
-        if not members:
-            members = tuple()
-            annotations = get_annotations(cls)
-            if annotations:
-                members = tuple(annotations.keys())
+    def repr(selfy: object):
+        myname: str = cls.__name__
+        values: List[str] = []
+        for num, name in enumerate(members):
+            value = getattr(selfy, name)
+            annotation = annotations.get(name)
+            if annotation and is_optional(annotation) and num + 1 == len(members):
+                if not value:
+                    continue
+                if len(value):  # Maybe need to do some other check to see if it is a sequence ¯\_(ツ)_/¯
+                    for val in value:
+                        values.append(stringify(val))
+                    continue
+            values.append(stringify(value))
 
-        def repr(selfy: object):
-            myname: str = cls.__name__
-            values: List[str] = []
-            for num, name in enumerate(members):
-                value = getattr(selfy, name)
-                annotation = annotations.get(name)
-                if annotation and is_optional(annotation) and num + 1 == len(members):
-                    if value is None:
-                        continue
-                    if len(value):  # Maybe need to do some other check to see if it is a sequence ¯\_(ツ)_/¯
-                        for val in value:
-                            values.append(stringify(val))
-                        continue
-                values.append(stringify(value))
+        a = ",".join(values)
+        return f"{myname}({a})"
 
-            a = ",".join(values)
-            return f"{myname}({a})"
+    cls.__repr__ = repr
 
-        def eq(self: object, other: object):
-            return isinstance(other, cls) and all(getattr(self, name) == getattr(other, name) for name in members)
-
-        cls.__repr__ = repr
-        cls.__eq__ = eq
-
-        return cls
-
-    return wrappy
+    return cls
 
 
-@Pretty()
-class Expressions(PathyInterface):
+@Pretty
+class Expressions(ASTNode):
     """
     Represents a sequence of expressions, ie. the results are concatenated into a single sequence.
     """
 
-    expressions: List[PathyInterface]
+    expressions: List[ASTNode]
 
-    def __init__(self, expressions: List[PathyInterface]):
+
+@Pretty
+class OrExpr(ASTNode):
+    expressions: List[ASTNode]
+
+    def __init__(self, expressions: List[ASTNode]):
         self.expressions = expressions
 
 
-@Pretty()
-class OrExpr(PathyInterface):
-    expressions: List[PathyInterface]
+@Pretty
+class AndExpr(ASTNode):
+    expressions: List[ASTNode]
 
-    def __init__(self, expressions: List[PathyInterface]):
+    def __init__(self, expressions: List[ASTNode]):
         self.expressions = expressions
 
 
-@Pretty()
-class AndExpr(PathyInterface):
-    expressions: List[PathyInterface]
-
-    def __init__(self, expressions: List[PathyInterface]):
-        self.expressions = expressions
-
-
-@Pretty()
-class ComparisonExpr(PathyInterface):
-    a: PathyInterface
-    b: PathyInterface
+@Pretty
+class ComparisonExpr(ASTNode):
+    a: ASTNode
+    b: ASTNode
     op: str
 
-    def __init__(self, a: PathyInterface, b: PathyInterface, op: str):
+    def __init__(self, a: ASTNode, b: ASTNode, op: str):
         self.a = a
         self.b = b
         self.op = op
 
 
-@Pretty()
-class AdditiveExpr(PathyInterface):
-    a: PathyInterface
-    b: PathyInterface
+@Pretty
+class AdditiveExpr(ASTNode):
+    a: ASTNode
+    b: ASTNode
     op: str
 
-    def __init__(self, a: PathyInterface, b: PathyInterface, op: str):
+    def __init__(self, a: ASTNode, b: ASTNode, op: str):
         self.a = a
         self.b = b
         self.op = op
 
 
-@Pretty()
-class MultiplicativeExpr(PathyInterface):
-    a: PathyInterface
-    b: PathyInterface
+@Pretty
+class MultiplicativeExpr(ASTNode):
+    a: ASTNode
+    b: ASTNode
     op: str
 
-    def __init__(self, a: PathyInterface, b: PathyInterface, op: str):
+    def __init__(self, a: ASTNode, b: ASTNode, op: str):
         self.a = a
         self.b = b
         self.op = op
 
 
-@Pretty()
-class UnionExpr(PathyInterface):
-    a: PathyInterface
-    b: PathyInterface
+@Pretty
+class UnionExpr(ASTNode):
+    a: ASTNode
+    b: ASTNode
 
-    def __init__(self, a: PathyInterface, b: PathyInterface):
+    def __init__(self, a: ASTNode, b: ASTNode):
         self.a = a
         self.b = b
 
 
-@Pretty()
-class IntersectExpr(PathyInterface):
-    a: PathyInterface
-    b: PathyInterface
+@Pretty
+class IntersectExpr(ASTNode):
+    a: ASTNode
+    b: ASTNode
 
-    def __init__(self, a: PathyInterface, b: PathyInterface):
+    def __init__(self, a: ASTNode, b: ASTNode):
         self.a = a
         self.b = b
 
 
-@Pretty()
-class UnaryExpr(PathyInterface):
-    expression: PathyInterface
+@Pretty
+class UnaryExpr(ASTNode):
+    expression: ASTNode
     sign: str
 
-    def __init__(self, expression: PathyInterface, sign: str):
+    def __init__(self, expression: ASTNode, sign: str):
         self.expression = expression
         self.sign = sign
 
 
-@Pretty()
-class PathOperator(PathyInterface):
-    a: PathyInterface
-    a: PathyInterface
-
-    def __init__(self, a: PathyInterface, b: PathyInterface):
-        self.a = a
-        self.b = b
+@Pretty
+class PathOperator(ASTNode):
+    a: ASTNode
+    b: ASTNode
 
 
-class DescendantPathExpr(PathyInterface):
+class DescendantPathExpr(ASTNode):
     a: "StepExpr"
     b: "StepExpr"
 
 
-@Pretty()
-class Predicate(PathyInterface):
-    predicate: PathyInterface
-
-    def __init__(self, predicate: PathyInterface):
-        self.predicate = predicate
+@Pretty
+class Predicate(ASTNode):
+    predicate: ASTNode
 
 
-class StepExpr(PathyInterface):
+class StepExpr(ASTNode):
     """
     [Definition: A step is a part of a path expression that generates a sequence
      of items and then filters the sequence by zero or more predicates.
@@ -204,7 +195,7 @@ class ArgumentList: ...
 PostfixTypes: TypeAlias = Union[Predicate, ArgumentList]
 
 
-@Pretty()
+@Pretty
 class PostfixExpr(StepExpr):
     """
     [Definition: An expression followed by a predicate (that is, E1[E2]) is referred to
@@ -212,15 +203,15 @@ class PostfixExpr(StepExpr):
      of E1 that satisfy the predicate in E2.]
     """
 
-    primary: PathyInterface
-    postfixes: Optional[Tuple[PostfixTypes]]  # Can be either function calls, predicates, or lookups
+    primary: ASTNode
+    postfixes: Optional[Tuple[PostfixTypes, ...]]  # Can be either function calls, predicates, or lookups
 
-    def __init__(self, primary: PathyInterface, *postfixes: PostfixTypes):
+    def __init__(self, primary: ASTNode, *postfixes: PostfixTypes):
         self.primary = primary
         self.postfixes = postfixes if len(postfixes) else None
 
 
-@Pretty()
+@Pretty
 class AxisStep(StepExpr):
     """
     [Definition: An axis step returns a sequence of nodes that are reachable
@@ -236,7 +227,7 @@ class AxisStep(StepExpr):
 
     axis: str
     nodetest: "NodeTest"
-    predicates: Optional[Tuple[Predicate]]
+    predicates: Optional[Tuple[Predicate, ...]]
 
     def __init__(self, axis: str, nodetest: "NodeTest", *predicates: Predicate):
         self.axis = axis
@@ -250,21 +241,15 @@ class NodeTest: ...
 class KindTest(NodeTest): ...
 
 
-@Pretty()
+@Pretty
 class NameTest(NodeTest):
     name: str
 
-    def __init__(self, name: str):
-        self.name = name
 
-
-@Pretty()
+@Pretty
 class AnyKindTest(KindTest): ...
 
 
-@Pretty()
-class Literal(PathyInterface):
+@Pretty
+class Literal(ASTNode):
     value: Union[str, int, float]
-
-    def __init__(self, value: Union[str, int, float]):
-        self.value = value

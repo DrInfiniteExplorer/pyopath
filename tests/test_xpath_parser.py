@@ -4,11 +4,11 @@ import pytest
 
 from pyopath.xpath.AST.ast import (
     AnyKindTest,
+    ASTNode,
     AxisStep,
     Literal,
     NameTest,
     PathOperator,
-    PathyInterface,
     PostfixExpr,
     Predicate,
 )
@@ -58,7 +58,7 @@ test_cases: Sequence[Tuple[str, Any]] = (
 
 
 @pytest.mark.parametrize("query, reference", test_cases)
-def test_parser(query: str, reference: PathyInterface):
+def test_parser(query: str, reference: ASTNode):
     res = parse(query)
     tokens = list(lex(query))
     assert res, f"Failed to parse: {query}"

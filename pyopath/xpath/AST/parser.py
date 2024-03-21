@@ -2,12 +2,12 @@ import ply.yacc
 
 from pyopath.xpath.AST.ast import (
     AnyKindTest,
+    ASTNode,
     AxisStep,
     Expressions,
     Literal,
     NameTest,
     PathOperator,
-    PathyInterface,
     PostfixExpr,
     Predicate,
 )
@@ -499,7 +499,7 @@ class PathParser:
         raise RuntimeError(msg)
 
 
-def parse(input: str, debug_yacc: bool = True, debug_parse: bool = False, debug: bool = False) -> PathyInterface:
+def parse(input: str, debug_yacc: bool = True, debug_parse: bool = False, debug: bool = False) -> ASTNode:
     lexa = PathLexer()
     lexer: ply.lex.Lexer = ply.lex.lex(object=lexa)  # type: ignore
     path_parser = PathParser()
