@@ -9,6 +9,12 @@ Other similar but different things:
 # What is this then?
 It can do the stuff above, but it can also query structures of objects in the application space itself, not just data documents. yay!
 
+Or well, it will be able to, once it's up and running properly. Currently I'm working on just making an xpath AST.
+
+
+
+
+# Notes and links
 
 ply docs
 https://github.com/dabeaz/ply/blob/master/doc/ply.md
