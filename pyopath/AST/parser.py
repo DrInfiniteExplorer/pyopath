@@ -1,6 +1,6 @@
 import ply.yacc
 
-from pyopath.AST.ast import Expression, Path, PathyInterface
+from pyopath.AST.ast import AnyKindTest, AxisStep, Expressions, Literal, NameTest, PathOperator, PathyInterface
 from pyopath.AST.lexer import PathLexer
 
 # https://www.w3.org/TR/xpath-31/#id-expressions
@@ -14,16 +14,16 @@ class PathParser:
         """
         path : Expr
         """
-        p[0] = Path(p[1])
+        p[0] = p[1]
 
     def p_Expr(self, p):
         """
         Expr : ExprList
         """
-        if len(p) > 2:
-            p[0] = (p[1], p[3])
+        if len(p[1]) > 1:
+            p[0] = Expressions(p[1])
         else:
-            p[0] = p[1]
+            p[0] = p[1][0]
 
     def p_ExprList(self, p):
         """
@@ -31,9 +31,10 @@ class PathParser:
                  | ExprList ',' ExprSingle
         """
         if len(p) > 2:
-            return Expression(p[1].expressions + [p[3]])
-        else:
             p[0] = p[1]
+            p[0].append(p[3])
+        else:
+            p[0] = [p[1]]
 
     def p_ExprSingle(self, p):
         """
@@ -175,12 +176,24 @@ class PathParser:
 
     def p_RelativePathExpr(self, p):
         """
-        RelativePathExpr : StepExpr SLASH StepExpr
-                         | StepExpr DOUBLESLASH StepExpr
-                         | StepExpr
+        RelativePathExpr : RelativePathList
+
+        """
+        p[0] = p[1]
+
+    def p_RelativePathList(self, p):
+        """
+        RelativePathList : StepExpr
+                         | RelativePathList SLASH StepExpr
+                         | RelativePathList DOUBLESLASH StepExpr
         """
         if len(p) > 2:
-            p[0] = ("RELATIVE", p[1], p[2], p[3])
+            left = p[1]
+            right = p[3]
+            if p[2] == "/":
+                p[0] = PathOperator(left, right)
+            else:
+                p[0] = PathOperator(PathOperator(left, AxisStep("descendant-or-self", AnyKindTest(), [])), right)
         else:
             p[0] = p[1]
 
@@ -193,7 +206,7 @@ class PathParser:
 
     def p_PostfixExpr(self, p):
         """
-        PostfixExpr : PrimaryExpr Predicate
+        PostfixExpr : PrimaryExpr Predicate <- this part actually supports chained lookups, predicates, and argumentlists, see https://www.w3.org/TR/xpath-31/#prod-xpath31-PostfixExpr
                     | PrimaryExpr
         """
         if len(p) > 2:
@@ -209,21 +222,29 @@ class PathParser:
         AxisStep : ReverseStep PredicateList
                  | ForwardStep PredicateList
         """
-        p[0] = ("AXISSTEP", p[1], p[2])
+        axis, nodetest = p[1]
+        predicates = p[2]
+        p[0] = AxisStep(axis, nodetest, predicates)
 
     def p_PredicateList(self, p):
         """
-        PredicateList : Predicate PredicateList
-                      | Predicate
+        PredicateList : Predicate
+                      | PredicateList Predicate
                       |
         """
-        p[0] = ("PREDLIST", *p[1:])
+        if len(p) > 2:
+            p[0] = p[1]
+            p[0].append(p[2])
+        elif len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = []
 
     def p_Predicate(self, p):
         """
         Predicate : '[' Expr ']'
         """
-        p[0] = ("PREDICATE", p[2])
+        p[0] = p[2]
 
     def p_ReverseStep(self, p):
         """
@@ -244,7 +265,7 @@ class PathParser:
                     | PRECEDING AXIS
                     | ANCESTOR_OR_SELF AXIS
         """
-        p[0] = ("REVERSE", p[1])
+        p[0] = p[1]
 
     def p_AbbrevReverseStep(self, p):
         """
@@ -274,7 +295,7 @@ class PathParser:
                     | FOLLOWING AXIS
                     | NAMESPACE AXIS
         """
-        p[0] = ("FORWARD", p[1])
+        p[0] = p[1]
 
     def p_AbbrevForwardStep(self, p):
         """
@@ -282,9 +303,9 @@ class PathParser:
                           | NodeTest
         """
         if len(p) > 2:
-            p[0] = (("FORWARD", "attribute"), p[2])
+            p[0] = ("attribute", p[2])
         else:
-            p[0] = (("FORWARD", "child"), p[1])
+            p[0] = ("child", p[1])
 
     def p_NodeTest(self, p):
         """
@@ -352,7 +373,7 @@ class PathParser:
         NameTest : EQNAME
                  | '*'
         """
-        p[0] = ("NAME_TEST", p[1])
+        p[0] = NameTest(p[1])
 
     def p_PrimaryExpr(self, p):
         """
@@ -370,7 +391,7 @@ class PathParser:
         Literal : STRING
                 | NUMBER
         """
-        p[0] = ("LITERAL", p[1])
+        p[0] = Literal(p[1])
 
     def p_VarRef(self, p):
         """
@@ -455,15 +476,16 @@ class PathParser:
         # (NA, 'UNARYQUESTION'),
     )
 
+    def p_error(self, p):
+        print(f"ERROR!! {p}")
+        asd()
 
-def parse(input: str) -> PathyInterface:
+
+def parse(input: str, debug_yacc: bool = True, debug_parse: bool = False, debug: bool = False) -> PathyInterface:
     lexa = PathLexer()
     lexer: ply.lex.Lexer = ply.lex.lex(object=lexa)  # type: ignore
     path_parser = PathParser()
     path_parser.tokens = lexa.tokens  # type: ignore
-    parser = ply.yacc.yacc(
-        module=path_parser,
-        write_tables=False,
-    )
+    parser: ply.yacc.LRParser = ply.yacc.yacc(module=path_parser, write_tables=True, debug=debug or debug_yacc)
 
-    return parser.parse(input, lexer=lexer)
+    return parser.parse(input, lexer=lexer, debug=debug or debug_parse)

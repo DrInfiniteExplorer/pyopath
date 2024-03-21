@@ -111,6 +111,12 @@ class PathLexer:
                 t.type = t.value.replace("-", "_").upper()
         return t
 
+    def t_error(self, t):
+        print(f"Illegal character '{t.value[0]}'")
+        raise ValueError("asd")
+        asd()
+        t.lexer.skip(1)
+
 
 def lex(input: str) -> Generator[ply.lex.LexToken, None, None]:
     lexer: ply.lex.Lexer = ply.lex.lex(object=PathLexer())  # type: ignore

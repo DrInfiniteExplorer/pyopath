@@ -2,21 +2,43 @@ from typing import Any, Sequence, Tuple
 
 import pytest
 
-from pyopath.AST.ast import Path, PathyInterface
+from pyopath.AST.ast import AnyKindTest, AxisStep, Literal, NameTest, PathOperator, PathyInterface
 from pyopath.AST.lexer import lex
 from pyopath.AST.parser import parse
 
-Path(None)
-
 test_cases: Sequence[Tuple[str, Any]] = (
     # Basic axes and axes shortcuts
-    ("child::a2", ("PATH", ("AXISSTEP", (("FORWARD", "child"), ("NAME_TEST", "a2")), ("PREDLIST",)))),
-    ("a2", ("PATH", ("AXISSTEP", (("FORWARD", "child"), ("NAME_TEST", "a2")), ("PREDLIST",)))),
-    ("attribute::a2", ("PATH", ("AXISSTEP", (("FORWARD", "attribute"), ("NAME_TEST", "a2")), ("PREDLIST",)))),
-    ("@a2", ("PATH", ("AXISSTEP", (("FORWARD", "attribute"), ("NAME_TEST", "a2")), ("PREDLIST",)))),
+    ("child::a2", AxisStep("child", NameTest("a2"), [])),
+    ("a2", AxisStep("child", NameTest("a2"), [])),
+    ("attribute::a2", AxisStep("attribute", NameTest("a2"), [])),
+    ("@a2", AxisStep("attribute", NameTest("a2"), [])),
+    # Simple Path expressions
+    ("a/b", PathOperator(AxisStep("child", NameTest("a"), []), AxisStep("child", NameTest("b"), []))),
+    (
+        "a/b/c",
+        PathOperator(
+            PathOperator(AxisStep("child", NameTest("a"), []), AxisStep("child", NameTest("b"), [])),
+            AxisStep("child", NameTest("c"), []),
+        ),
+    ),
+    # Descendants abbreviation
+    (
+        "a//b",
+        PathOperator(
+            PathOperator(AxisStep("child", NameTest("a"), []), AxisStep("descendant-or-self", AnyKindTest(), [])),
+            AxisStep("child", NameTest("b"), []),
+        ),
+    ),
+    # Predicates
+    ("a[1]", AxisStep("child", NameTest("a"), [Literal("1")])),
+    ("a[1][b]", AxisStep("child", NameTest("a"), [Literal("1"), AxisStep("child", NameTest("b"), [])])),
+    ("a[b][1]", AxisStep("child", NameTest("a"), [AxisStep("child", NameTest("b"), []), Literal("1")])),
+    ("a[b[1]]", AxisStep("child", NameTest("a"), [AxisStep("child", NameTest("b"), [Literal("1")])])),
+    # PostFix filter
+    ("1[b]", 2),
     # Rooted expressions
-    ("/a", ("PATH", ("ROOT", ("AXISSTEP", (("FORWARD", "child"), ("NAME_TEST", "a")), ("PREDLIST",))))),
-    ("//a", ("PATH", ("DESCENCANTS", ("AXISSTEP", (("FORWARD", "child"), ("NAME_TEST", "a")), ("PREDLIST",))))),
+    ("/a", ("ROOT", AxisStep("child", NameTest("a"), []))),
+    ("//a", ("DESCENCANTS", AxisStep("child", NameTest("a"), []))),
     # ("child::a2/b", Path("a")),
     # ("a1/b", Path("a")),
     # ("2=2", Path(2 == 2)),
