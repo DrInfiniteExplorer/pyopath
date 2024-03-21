@@ -1,8 +1,28 @@
+import sys
 from abc import ABC
-from typing import Any, List, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from typing_extensions import TypeAlias, get_args, get_origin
 
 
 class PathyInterface(ABC): ...
+
+
+if sys.version_info >= (3, 10):
+    import inspect
+
+    def get_annotations(typ):
+        return inspect.get_annotations(typ)
+else:
+
+    def get_annotations(typ: type) -> Dict[str, type]:
+        return getattr(typ, "__annotations__", None)  # type: ignore
+
+
+def is_optional(typ: type) -> bool:
+    origin = get_origin(typ)
+    args = get_args(typ)
+    return origin is Union and type(None) in args
 
 
 def Pretty(*members: str):
@@ -11,10 +31,32 @@ def Pretty(*members: str):
             return f"'{a}'"
         return str(a)
 
+    annotations: Dict[str, type] = {}
+
     def wrappy(cls: type):
+        nonlocal members, annotations
+        if not members:
+            members = tuple()
+            annotations = get_annotations(cls)
+            if annotations:
+                members = tuple(annotations.keys())
+
         def repr(selfy: object):
             myname: str = cls.__name__
-            a = ",".join([f"{stringify(getattr(selfy, name))}" for name in members])
+            values: List[str] = []
+            for num, name in enumerate(members):
+                value = getattr(selfy, name)
+                annotation = annotations.get(name)
+                if annotation and is_optional(annotation) and num + 1 == len(members):
+                    if value is None:
+                        continue
+                    if len(value):  # Maybe need to do some other check to see if it is a sequence ¯\_(ツ)_/¯
+                        for val in value:
+                            values.append(stringify(val))
+                        continue
+                values.append(stringify(value))
+
+            a = ",".join(values)
             return f"{myname}({a})"
 
         def eq(self: object, other: object):
@@ -28,7 +70,7 @@ def Pretty(*members: str):
     return wrappy
 
 
-@Pretty("expressions")
+@Pretty()
 class Expressions(PathyInterface):
     """
     Represents a sequence of expressions, ie. the results are concatenated into a single sequence.
@@ -40,7 +82,7 @@ class Expressions(PathyInterface):
         self.expressions = expressions
 
 
-@Pretty("expressions")
+@Pretty()
 class OrExpr(PathyInterface):
     expressions: List[PathyInterface]
 
@@ -48,7 +90,7 @@ class OrExpr(PathyInterface):
         self.expressions = expressions
 
 
-@Pretty("expressions")
+@Pretty()
 class AndExpr(PathyInterface):
     expressions: List[PathyInterface]
 
@@ -56,7 +98,7 @@ class AndExpr(PathyInterface):
         self.expressions = expressions
 
 
-@Pretty("a", "b", "op")
+@Pretty()
 class ComparisonExpr(PathyInterface):
     a: PathyInterface
     b: PathyInterface
@@ -68,7 +110,7 @@ class ComparisonExpr(PathyInterface):
         self.op = op
 
 
-@Pretty("a", "b", "op")
+@Pretty()
 class AdditiveExpr(PathyInterface):
     a: PathyInterface
     b: PathyInterface
@@ -80,7 +122,7 @@ class AdditiveExpr(PathyInterface):
         self.op = op
 
 
-@Pretty("a", "b", "op")
+@Pretty()
 class MultiplicativeExpr(PathyInterface):
     a: PathyInterface
     b: PathyInterface
@@ -92,7 +134,7 @@ class MultiplicativeExpr(PathyInterface):
         self.op = op
 
 
-@Pretty("a", "b")
+@Pretty()
 class UnionExpr(PathyInterface):
     a: PathyInterface
     b: PathyInterface
@@ -102,7 +144,7 @@ class UnionExpr(PathyInterface):
         self.b = b
 
 
-@Pretty("a", "b")
+@Pretty()
 class IntersectExpr(PathyInterface):
     a: PathyInterface
     b: PathyInterface
@@ -112,7 +154,7 @@ class IntersectExpr(PathyInterface):
         self.b = b
 
 
-@Pretty("expression", "sign")
+@Pretty()
 class UnaryExpr(PathyInterface):
     expression: PathyInterface
     sign: str
@@ -122,7 +164,7 @@ class UnaryExpr(PathyInterface):
         self.sign = sign
 
 
-@Pretty("a", "b")
+@Pretty()
 class PathOperator(PathyInterface):
     a: PathyInterface
     a: PathyInterface
@@ -137,6 +179,14 @@ class DescendantPathExpr(PathyInterface):
     b: "StepExpr"
 
 
+@Pretty()
+class Predicate(PathyInterface):
+    predicate: PathyInterface
+
+    def __init__(self, predicate: PathyInterface):
+        self.predicate = predicate
+
+
 class StepExpr(PathyInterface):
     """
     [Definition: A step is a part of a path expression that generates a sequence
@@ -148,7 +198,29 @@ class StepExpr(PathyInterface):
     ...
 
 
-@Pretty("axis", "nodetest", "predicates")
+class ArgumentList: ...
+
+
+PostfixTypes: TypeAlias = Union[Predicate, ArgumentList]
+
+
+@Pretty()
+class PostfixExpr(StepExpr):
+    """
+    [Definition: An expression followed by a predicate (that is, E1[E2]) is referred to
+     as a filter expression: its effect is to return those items from the value
+     of E1 that satisfy the predicate in E2.]
+    """
+
+    primary: PathyInterface
+    postfixes: Optional[Tuple[PostfixTypes]]  # Can be either function calls, predicates, or lookups
+
+    def __init__(self, primary: PathyInterface, *postfixes: PostfixTypes):
+        self.primary = primary
+        self.postfixes = postfixes if len(postfixes) else None
+
+
+@Pretty()
 class AxisStep(StepExpr):
     """
     [Definition: An axis step returns a sequence of nodes that are reachable
@@ -164,12 +236,12 @@ class AxisStep(StepExpr):
 
     axis: str
     nodetest: "NodeTest"
-    predicates: List[PathyInterface]
+    predicates: Optional[Tuple[Predicate]]
 
-    def __init__(self, axis: str, nodetest: "NodeTest", predicates: List[PathyInterface]):
+    def __init__(self, axis: str, nodetest: "NodeTest", *predicates: Predicate):
         self.axis = axis
         self.nodetest = nodetest
-        self.predicates = predicates
+        self.predicates = predicates if len(predicates) else None
 
 
 class NodeTest: ...
@@ -178,7 +250,7 @@ class NodeTest: ...
 class KindTest(NodeTest): ...
 
 
-@Pretty("name")
+@Pretty()
 class NameTest(NodeTest):
     name: str
 
@@ -190,7 +262,7 @@ class NameTest(NodeTest):
 class AnyKindTest(KindTest): ...
 
 
-@Pretty("value")
+@Pretty()
 class Literal(PathyInterface):
     value: Union[str, int, float]
 

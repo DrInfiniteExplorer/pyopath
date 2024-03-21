@@ -1,12 +1,19 @@
 import ply.yacc
 
-from pyopath.AST.ast import AnyKindTest, AxisStep, Expressions, Literal, NameTest, PathOperator, PathyInterface
+from pyopath.AST.ast import (
+    AnyKindTest,
+    AxisStep,
+    Expressions,
+    Literal,
+    NameTest,
+    PathOperator,
+    PathyInterface,
+    PostfixExpr,
+    Predicate,
+)
 from pyopath.AST.lexer import PathLexer
 
 # https://www.w3.org/TR/xpath-31/#id-expressions
-
-# There is https://github.com/emory-libraries/eulxml/blob/master/eulxml/xpath/__init__.py but it seems to be an older or limited version?
-# Or maybe just something optimized.
 
 
 class PathParser:
@@ -193,7 +200,7 @@ class PathParser:
             if p[2] == "/":
                 p[0] = PathOperator(left, right)
             else:
-                p[0] = PathOperator(PathOperator(left, AxisStep("descendant-or-self", AnyKindTest(), [])), right)
+                p[0] = PathOperator(PathOperator(left, AxisStep("descendant-or-self", AnyKindTest())), right)
         else:
             p[0] = p[1]
 
@@ -206,15 +213,24 @@ class PathParser:
 
     def p_PostfixExpr(self, p):
         """
-        PostfixExpr : PrimaryExpr Predicate <- this part actually supports chained lookups, predicates, and argumentlists, see https://www.w3.org/TR/xpath-31/#prod-xpath31-PostfixExpr
+        PostfixExpr : PrimaryExpr PostfixListChain
                     | PrimaryExpr
         """
         if len(p) > 2:
-            p[0] = ("POSTFIX", *p[1:])
+            p[0] = PostfixExpr(p[1], *p[2])
         else:
             p[0] = p[1]
 
-        ...
+    def p_PostfixListChain(self, p):
+        """
+        PostfixListChain : Predicate
+                         | PostfixListChain Predicate
+        """
+        if len(p) > 2:
+            p[0] = p[1]
+            p[0].append(p[2])
+        elif len(p) == 2:
+            p[0] = [p[1]]
 
     # When evaluating these predicates, position() depends on the direction of the axis
     def p_AxisStep(self, p):
@@ -224,7 +240,7 @@ class PathParser:
         """
         axis, nodetest = p[1]
         predicates = p[2]
-        p[0] = AxisStep(axis, nodetest, predicates)
+        p[0] = AxisStep(axis, nodetest, *predicates)
 
     def p_PredicateList(self, p):
         """
@@ -244,7 +260,7 @@ class PathParser:
         """
         Predicate : '[' Expr ']'
         """
-        p[0] = p[2]
+        p[0] = Predicate(p[2])
 
     def p_ReverseStep(self, p):
         """

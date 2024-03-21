@@ -17,6 +17,8 @@ https://ply.readthedocs.io/en/latest/ply.html
 good parser review
 https://tratt.net/laurie/blog/2020/which_parsing_approach.html
 
+another xpathy thing using ply
+https://github.com/emory-libraries/eulxml/blob/master/eulxml/xpath/__init__.py
 
 parsing c with ply
 https://github.com/dabeaz/ply/blob/master/example/ansic/cparse.py
