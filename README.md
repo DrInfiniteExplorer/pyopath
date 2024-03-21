@@ -1,18 +1,83 @@
-# PyOPath
+## PyOPath
 
-Other similar but different things:
-
-* xpath - for xml documents
-* jsonpath - for json documents
-* objectpath - for list-dict documents
-
-# What is this then?
-It can do the stuff above, but it can also query structures of objects in the application space itself, not just data documents. yay!
-
-Or well, it will be able to, once it's up and running properly. Currently I'm working on just making an xpath AST.
+Test-status: [![Status](https://github.com/DrInfiniteExplorer/pyopath/actions/workflows/python-package.yml/badge.svg)](https://github.com/DrInfiniteExplorer/pyopath/actions/workflows/python-package.yml)
 
 
+### Overview
 
+PyOPath is a Python library designed to facilitate querying structures of
+objects within application space. Inspired by XPath, JSONPath, and ObjectPath,
+PyOPath extends the querying capabilities beyond traditional XML and JSON
+documents to include a broader range of data structures.
+
+### Key Features
+
+- **Flexible Querying**: PyOPath allows querying of any kind of model as long
+  as it meets certain criteria, expanding beyond the limitations of XML and
+  JSON documents.
+  
+- **Application Space Integration**: Unlike traditional querying libraries,
+  PyOPath enables querying directly within the application's data structures,
+  leveraging Python's runtime introspection capabilities.
+
+### Getting Started
+
+To begin using PyOPath in your project:
+
+1. Install PyOPath via pip:
+
+    ```bash
+    pip install pyopath
+    ```
+
+2. Import PyOPath into your Python script:
+
+    ```python
+    import pyopath
+    ```
+
+3. Start querying your application's data structures using PyOPath's compact
+   syntax.
+
+### Example
+
+    ```python
+    # Assume we have a data structure 'my_data' representing a nested dictionary
+
+    my_data = {
+        "name": "John",
+        "age": 30,
+        "address": {
+            "city": "New York",
+            "zipcode": "10001"
+        },
+        "pets": [
+            {"type": "dog", "name": "Buddy"},
+            {"type": "cat", "name": "Whiskers"}
+        ]
+    }
+
+    # Querying the data structure with PyOPath
+
+    result = pyopath.query(my_data, "/address/city")
+    print(result)  # Output: "New York"
+
+    ```
+
+### Roadmap
+
+Currently, PyOPath is focused on building a robust XPath AST. Future plans
+ include expanding query capabilities and enhancing integration with various
+ data structures and application models.
+
+### Contributing
+
+Contributions to PyOPath are welcome! Feel free to submit bug reports,
+ feature requests, or pull requests via GitHub.
+
+### License
+
+PyOPath is licensed under the MIT License. See the LICENSE file for details.
 
 # Notes and links
 
