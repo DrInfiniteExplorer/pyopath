@@ -415,7 +415,7 @@ class PathParser:
         """
         p[0] = ("VARREF", p[1])
 
-    def p_VarName(self, P):
+    def p_VarName(self, p):
         "VarName : EQNAME"
         p[0] = ("VARNAME", p[1])
 
@@ -493,8 +493,9 @@ class PathParser:
     )
 
     def p_error(self, p):
-        print(f"ERROR!! {p}")
-        asd()
+        msg = f"ERROR!! {p}"
+        print(msg)
+        raise RuntimeError(msg)
 
 
 def parse(input: str, debug_yacc: bool = True, debug_parse: bool = False, debug: bool = False) -> PathyInterface:
