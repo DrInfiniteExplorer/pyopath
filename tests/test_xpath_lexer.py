@@ -13,6 +13,8 @@ test_cases: Sequence[Tuple[str, Any]] = (
     ("@a", (("@", "@"), ("EQNAME", "a"))),
     ("/a", (("SLASH", "/"), ("EQNAME", "a"))),
     ("//a", (("DOUBLESLASH", "//"), ("EQNAME", "a"))),
+    ("text()", (("TEXT", "text"), ("(", "("), (")", ")"))),
+    ("a==b", (("EQNAME", "a"), ("EQsym", "=="), ("EQNAME", "b"))),
 )
 
 

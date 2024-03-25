@@ -9,9 +9,25 @@
             "type":"debugpy",
             "request":"launch",
             "module":"pytest",
-            "args": ["--doctest-modules", "-v"],
+            "args": ["--doctest-modules", "-v", "--failed-first"],
             "justMyCode":true,
             
+        },
+        {
+            "name":"pytest specific",
+            "type":"debugpy",
+            "request":"launch",
+            "module":"pytest",
+            "args": ["--doctest-modules", "-v", "-k", "${input:testName}"],
+            "justMyCode":true,
         }
-    ]
+    ],
+    "inputs": [
+        {
+          "type": "promptString",
+          "id": "testName",
+          "description": "WHAT TEST??",
+          "default": ""
+        }
+      ]
 }

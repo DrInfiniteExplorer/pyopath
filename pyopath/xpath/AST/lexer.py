@@ -25,7 +25,7 @@ class PathLexer:
         + ["PARENT", "ANCESTOR", "PRECEDING_SIBLING", "PRECEDING", "ANCESTOR_OR_SELF"]
         + ["AXIS"]
         + ["CONTEXT", "DOUBLEDOT"]
-        + ["ELEMENT", "NODE"]  # ATTRIBUTE already defined elsewhere
+        + ["ELEMENT", "NODE", "TEXT"]  # ATTRIBUTE already defined elsewhere
         + ["STRING", "NUMBER", "EQNAME"]
     )
 
@@ -39,12 +39,12 @@ class PathLexer:
     t_GTstr = r"\bgt\b"
     t_GEstr = r"\bge\b"
 
-    t_EQsym = r"\b=\b|\b==\b"
-    t_NEsym = r"\b!=\b"
-    t_LTsym = r"\b<\b"
-    t_LEsym = r"\b<=\b"
-    t_GTsym = r"\b>\b"
-    t_GEsym = r"\b>=\b"
+    t_EQsym = r"==?"
+    t_NEsym = r"!="
+    t_LTsym = r"<"
+    t_LEsym = r"<="
+    t_GTsym = r">"
+    t_GEsym = r">="
 
     t_IS = r"\bis\b"
 
@@ -97,6 +97,9 @@ class PathLexer:
 
     t_ELEMENT = r"\belement\b"
     t_NODE = r"\bnode\b"
+    t_TEXT = r"\btext\b"
+
+    TestNames = ["element", "node", "text"]
 
     t_STRING = r"(\"([^\\\n]|(\\.))*?\")" + r"|" + r"(\'([^\\\n]|(\\.))*?\')"
     t_NUMBER = r"[+-]?\d+(\.\d*)?"
@@ -108,6 +111,10 @@ class PathLexer:
         if t.value in self.AxisNames:
             clone = t.lexer.clone()
             if clone.token().type == "AXIS":
+                t.type = t.value.replace("-", "_").upper()
+        if t.value in self.TestNames:
+            clone = t.lexer.clone()
+            if clone.token().type == "(":
                 t.type = t.value.replace("-", "_").upper()
         return t
 

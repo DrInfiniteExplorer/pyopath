@@ -4,12 +4,16 @@ from pyopath.xpath.AST.ast import (
     AnyKindTest,
     ASTNode,
     AxisStep,
+    Compare,
+    Context,
     Expressions,
     Literal,
     NameTest,
     PathOperator,
     PostfixExpr,
     Predicate,
+    StaticFunctionCall,
+    TextTest,
 )
 from pyopath.xpath.AST.lexer import PathLexer
 
@@ -55,6 +59,7 @@ class PathParser:
                | AndExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("OR", p[1], p[3])
         else:
             p[0] = p[1]
@@ -65,6 +70,7 @@ class PathParser:
                 | ComparisonExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("AND", p[1], p[3])
         else:
             p[0] = p[1]
@@ -77,7 +83,7 @@ class PathParser:
                        | AdditiveExpr
         """
         if len(p) > 2:
-            p[0] = ("COMPARE", p[1], p[2], p[3])
+            p[0] = Compare(p[3], p[1], p[2])
         else:
             p[0] = p[1]
 
@@ -111,6 +117,7 @@ class PathParser:
                      | MultiplicativeExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("ADD", p[1], p[2], p[3])
         else:
             p[0] = p[1]
@@ -124,6 +131,7 @@ class PathParser:
                            | UnionExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("MULTIPLY", p[1], p[2], p[3])
         else:
             p[0] = p[1]
@@ -135,6 +143,7 @@ class PathParser:
                   | IntersectExceptExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("UNION", p[1], p[2], p[3])
         else:
             p[0] = p[1]
@@ -146,6 +155,7 @@ class PathParser:
                             | UnaryExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("INTERSECT", p[1], p[2], p[3])
         else:
             p[0] = p[1]
@@ -157,6 +167,7 @@ class PathParser:
                   | ValueExpr
         """
         if len(p) > 2:
+            assert False, "Not implemented"
             p[0] = ("UNARY", p[1], p[2])
         else:
             p[0] = p[1]
@@ -172,11 +183,14 @@ class PathParser:
         """
         if len(p) > 2:
             if p[1] == "/":
+                assert False, "Not implemented"
                 p[0] = ("ROOT", p[2])
             elif p[1] == "//":
+                assert False, "Not implemented"
                 p[0] = ("DESCENCANTS", p[2])
         else:
             if p[1] == "/":
+                assert False, "Not implemented"
                 p[0] = "ROOT"
             else:
                 p[0] = p[1]
@@ -287,6 +301,7 @@ class PathParser:
         """
         AbbrevReverseStep : DOUBLEDOT
         """
+        assert False, "Not implemented"
         p[0] = ("PARENT",)
 
     def p_ForwardStep(self, p):
@@ -334,6 +349,7 @@ class PathParser:
         """
         KindTest : ElementTest
                  | AttributeTest
+                 | TextTest
                  | AnyKindTest
         """
         p[0] = p[1]
@@ -343,6 +359,7 @@ class PathParser:
         ElementTest : ELEMENT '(' ElementNameOrWildcard ')'
                     | ELEMENT '(' ')'
         """
+        assert False, "Not implemented yet"
         p[0] = ("ELEMENT_TEST", p[3])
 
     def p_ElementNameOrWildcard(self, p):
@@ -363,6 +380,7 @@ class PathParser:
         AttributeTest : ATTRIBUTE '(' AttributeNameOrWildcard ')'
                       | ATTRIBUTE '(' ')'
         """
+        assert False, "Not implemented"
         p[0] = ("ATTRIBUTE_TEST", p[3])
 
     def p_AttributeNameOrWildcard(self, p):
@@ -378,10 +396,17 @@ class PathParser:
         """
         p[0] = p[1]
 
+    def p_TextTest(self, p):
+        """
+        TextTest : TEXT '(' ')'
+        """
+        p[0] = TextTest()
+
     def p_AnyKindTest(self, p):
         """
         AnyKindTest : NODE '(' ')'
         """
+        assert False, "Not implemented"
         p[0] = ("NODE_TEST",)
 
     def p_NameTest(self, p):
@@ -391,32 +416,57 @@ class PathParser:
         """
         p[0] = NameTest(p[1])
 
-    def p_PrimaryExpr(self, p):
+    def p_PrimaryExpr_Literal(self, p):
         """
         PrimaryExpr : Literal
-                    | VarRef
-                    | ParenthesizedExpr
-                    | CONTEXT
+        """
+        p[0] = p[1]
+
+    def p_PrimaryExpr_Parens(self, p):
+        """
+        PrimaryExpr : ParenthesizedExpr
+        """
+        p[0] = p[1]
+
+    def p_PrimaryExpr_Context(self, p):
+        """
+        PrimaryExpr : CONTEXT
+        """
+        p[0] = Context()
+
+    def p_PrimaryExpr(self, p):
+        """
+        PrimaryExpr : VarRef
                     | FunctionCall
 
         """
         p[0] = p[1]
 
-    def p_Literal(self, p):
+    def p_Literal_str(self, p):
         """
         Literal : STRING
-                | NUMBER
         """
         p[0] = Literal(p[1])
+
+    def p_Literal_num(self, p):
+        """
+        Literal : NUMBER
+        """
+        try:
+            p[0] = Literal(int(p[1]))
+        except ValueError:
+            p[0] = Literal(float(p[1]))
 
     def p_VarRef(self, p):
         """
         VarRef : '$' VarName
         """
+        assert False, "Not implemented"
         p[0] = ("VARREF", p[1])
 
     def p_VarName(self, p):
         "VarName : EQNAME"
+        assert False, "Not implemented"
         p[0] = ("VARNAME", p[1])
 
     def p_ParenthesizedExpr(self, p):
@@ -425,13 +475,13 @@ class PathParser:
                           | '(' Expr ')'
         """
         # Parens are only needed to order things while building AST
-        p[0] = p[1]
+        p[0] = p[2]
 
     def p_FunctionCall(self, p):
         """
         FunctionCall : EQNAME ArgumentList
         """
-        p[0] = tuple(["FUNCCALL"] + p[1:])
+        p[0] = StaticFunctionCall(p[1], p[2])
 
     def p_ArgumentList(self, p):
         """
@@ -440,18 +490,24 @@ class PathParser:
         """
         p[0] = tuple(["ARGLIST"] + p[1:])
 
-    def p_ArgumentExpr(self, p):
+    def p_ArgumentExpr_single(self, p):
         """
-        ArgumentExpr : Argument ',' Argument
-                     | Argument
+        ArgumentExpr : Argument
         """
-        p[0] = tuple(["ARGEXPR"] + p[1:])
+        p[0] = [p[1]]
+
+    def p_ArgumentExpr_chain(self, p):
+        """
+        ArgumentExpr : ArgumentExpr ',' Argument
+        """
+        p[0] = p[1]
+        p[0].append(p[3])
 
     def p_Argument(self, p):
         """
         Argument : Expr
         """
-        p[0] = tuple(["ARG"] + p[1:])
+        p[0] = p[1:]
 
     EITHER = "left"
     NA = "nonassoc"

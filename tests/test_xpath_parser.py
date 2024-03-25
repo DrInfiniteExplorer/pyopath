@@ -6,16 +6,23 @@ from pyopath.xpath.AST.ast import (
     AnyKindTest,
     ASTNode,
     AxisStep,
+    Context,
     Literal,
     NameTest,
     PathOperator,
     PostfixExpr,
     Predicate,
+    TextTest,
 )
 from pyopath.xpath.AST.lexer import lex
 from pyopath.xpath.AST.parser import parse
 
 test_cases: Sequence[Tuple[str, Any]] = (
+    # Literals
+    ("1", Literal(1)),
+    ("1.5", Literal(1.5)),
+    # Context
+    (".", Context()),
     # Basic axes and axes shortcuts
     ("child::a2", AxisStep("child", NameTest("a2"))),
     ("a2", AxisStep("child", NameTest("a2"))),
@@ -39,21 +46,22 @@ test_cases: Sequence[Tuple[str, Any]] = (
         ),
     ),
     # Predicates
-    ("a[1]", AxisStep("child", NameTest("a"), Predicate(Literal("1")))),
-    ("a[1][b]", AxisStep("child", NameTest("a"), Predicate(Literal("1")), Predicate(AxisStep("child", NameTest("b"))))),
-    ("a[b][1]", AxisStep("child", NameTest("a"), Predicate(AxisStep("child", NameTest("b"))), Predicate(Literal("1")))),
-    ("a[b[1]]", AxisStep("child", NameTest("a"), Predicate(AxisStep("child", NameTest("b"), Predicate(Literal("1")))))),
+    ("a[1]", AxisStep("child", NameTest("a"), Predicate(Literal(1)))),
+    ("a[1][b]", AxisStep("child", NameTest("a"), Predicate(Literal(1)), Predicate(AxisStep("child", NameTest("b"))))),
+    ("a[b][1]", AxisStep("child", NameTest("a"), Predicate(AxisStep("child", NameTest("b"))), Predicate(Literal(1)))),
+    ("a[b[1]]", AxisStep("child", NameTest("a"), Predicate(AxisStep("child", NameTest("b"), Predicate(Literal(1)))))),
     # PostFix filter
-    ("1[b]", PostfixExpr(Literal("1"), Predicate(AxisStep("child", NameTest("b"))))),
-    # Rooted expressions
-    ("/a", ("ROOT", AxisStep("child", NameTest("a")))),
-    ("//a", ("DESCENCANTS", AxisStep("child", NameTest("a")))),
-    # ("child::a2/b", Path("a")),
-    # ("a1/b", Path("a")),
-    # ("2=2", Path(2 == 2)),
-    # ("a.@b", Path("a")),
-    # ("a[2]", Path("a")),
-    #    ("a[b]", Conditions(Access("a"), Access("b"))),
+    ("1[b]", PostfixExpr(Literal(1), Predicate(AxisStep("child", NameTest("b"))))),
+    # Parenthesisesses
+    ("(1)", Literal(1)),
+    ("1/(2/3)", PathOperator(Literal(1), PathOperator(Literal(2), Literal(3)))),
+    ("(1/2)/3", PathOperator(PathOperator(Literal(1), Literal(2)), Literal(3))),
+    # text-node-test
+    ("self::text()", AxisStep("self", TextTest())),
+    ("text()", AxisStep("child", TextTest())),
+    ## Rooted expressions
+    # ("/a", ("ROOT", AxisStep("child", NameTest("a")))),
+    # ("//a", ("DESCENCANTS", AxisStep("child", NameTest("a")))),
 )
 
 

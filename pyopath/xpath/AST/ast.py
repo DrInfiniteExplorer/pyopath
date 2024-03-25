@@ -251,5 +251,26 @@ class AnyKindTest(KindTest): ...
 
 
 @Pretty
+class TextTest(KindTest): ...
+
+
+@Pretty
+class Context(ASTNode): ...
+
+
+@Pretty
 class Literal(ASTNode):
     value: Union[str, int, float]
+
+
+@Pretty
+class StaticFunctionCall(ASTNode):
+    name: str
+    arguments: List[Expressions]
+
+
+@Pretty
+class Compare(ASTNode):
+    op: str
+    lhs: Expressions
+    rhs: Expressions
