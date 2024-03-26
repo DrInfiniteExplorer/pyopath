@@ -17,7 +17,8 @@ class EtreeElement(ElementBase):
         return self.element.tag
 
     def string_value(self) -> str:
-        return self.element.text or ""
+        # Should be able to use etree to quickly grab the string value of the element?
+        raise NotImplementedError()
 
     def attributes(self) -> Generator[AttributeBase, None, None]:
         for name, value in self.element.attrib.items():
@@ -48,6 +49,8 @@ class EtreeAttribute(AttributeBase):
         return self.name
 
     def string_value(self) -> str:
+        # Todo: Make sure is normalized?
+        # https://www.w3.org/TR/xpath-datamodel-31/#const-infoset-attribute
         return self.value
 
     def parent(self) -> Optional[NodeBase]:
@@ -70,6 +73,9 @@ class EtreeText(TextBase):
         if not self.parent_element:
             return ""
         return self.parent_element.element.text or ""
+
+    def typed_value(self) -> Generator[Any, None, None]:
+        yield self.string_value()
 
     def attributes(self) -> Generator["AttributeBase", None, None]: ...
     def children(self) -> Generator["NodeBase", None, None]: ...

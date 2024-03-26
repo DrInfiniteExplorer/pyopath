@@ -49,7 +49,7 @@ def Pretty(cls: T) -> T:
         members = tuple(annotations.keys())
 
     def repr(selfy: object):
-        myname: str = cls.__name__
+        myname: str = type(selfy).__name__
         values: List[str] = []
         for num, name in enumerate(members):
             value = getattr(selfy, name)
@@ -270,7 +270,21 @@ class StaticFunctionCall(ASTNode):
 
 
 @Pretty
-class Compare(ASTNode):
-    op: str
+class ValueCompare(ASTNode):
     lhs: Expressions
     rhs: Expressions
+    op: str
+
+
+@Pretty
+class GeneralCompare(ASTNode):
+    lhs: Expressions
+    rhs: Expressions
+    op: str
+
+
+@Pretty
+class NodeCompare(ASTNode):
+    lhs: Expressions
+    rhs: Expressions
+    op: str

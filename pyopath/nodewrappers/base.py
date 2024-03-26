@@ -21,7 +21,8 @@ class NodeBase(Protocol):
     # def is_idrefs(self) -> bool: ...
     # def nilled(self) -> bool: ...
     # def type_name(self) -> str: ...
-    # def typed_value(self) -> Any: ...
+    def typed_value(self) -> Generator[Any, None, None]:
+        raise NotImplementedError()
 
     # NodeBase and derivatives represents nodes in a tree produced from elsewhere
     # Call this to obtain the underlying value object that is wrapped.
@@ -32,6 +33,9 @@ class ElementBase(NodeBase):
     def node_kind(self) -> str:
         return "element"
 
+    def typed_value(self) -> Generator[Any, None, None]:
+        yield self.string_value()
+
 
 class AttributeBase(NodeBase):
     def attributes(self) -> Generator["AttributeBase", None, None]: ...
@@ -39,6 +43,9 @@ class AttributeBase(NodeBase):
 
     def node_kind(self) -> str:
         return "attribute"
+
+    def typed_value(self) -> Generator[Any, None, None]:
+        yield self.string_value()
 
 
 class DocumentBase(NodeBase): ...
@@ -86,7 +93,8 @@ def namespace_nodes(node: NodeBase) -> Generator[NodeBase, None, None]: ...
 def nilled(node: NodeBase) -> bool: ...
 def node_kind(node: NodeBase) -> str: ...
 def type_name(node: NodeBase) -> str: ...
-def typed_value(node: NodeBase) -> Any: ...
+def typed_value(node: NodeBase) -> Generator[Any, None, None]:
+    yield from node.typed_value()
 
 
 def unwrap(node: NodeBase) -> Any:

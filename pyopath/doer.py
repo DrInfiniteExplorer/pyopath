@@ -8,13 +8,21 @@ from typing import Any, Callable, Dict, Generator, List, Mapping, Optional, Sequ
 
 from typing_extensions import Self
 
-from pyopath.nodewrappers.base import NodeBase, TextBase, attributes, children, node_name, string_value, unwrap
+from pyopath.nodewrappers.base import (
+    NodeBase,
+    TextBase,
+    attributes,
+    children,
+    node_name,
+    string_value,
+    typed_value,
+    unwrap,
+)
 from pyopath.nodewrappers.registry import wrap
 from pyopath.xpath.AST.ast import (
     AnyKindTest,
     ASTNode,
     AxisStep,
-    Compare,
     Context,
     Literal,
     NameTest,
@@ -23,6 +31,7 @@ from pyopath.xpath.AST.ast import (
     Predicate,
     StaticFunctionCall,
     TextTest,
+    ValueCompare,
 )
 from pyopath.xpath.AST.parser import parse
 
@@ -97,9 +106,37 @@ def empty_sequence_generator() -> ItemGenerator:
         yield None
 
 
-def atomic_sequence_generator(item: DynamicContext) -> ItemGenerator:
-    # TODO: check item type?
+def atomic_sequence(item: DynamicContext) -> ItemGenerator:
     yield item
+
+
+def atomize_sequence(items: ItemGenerator, stream: bool = False) -> ItemGenerator:
+    """
+    https://www.w3.org/TR/xpath-31/#id-atomization
+    """
+    for item in items:
+        if is_atomic(item.item):
+            yield item
+        elif is_node(item.item):
+            # A sequence can not contain a sequence, it is flattened
+            # atomize atomizes a sequence
+            # typed-value for a node can produce a sequence
+            # Hence it is flattened.
+            # Dunno if we should rescope ¯\_(ツ)_/¯
+
+            def work():
+                cnt = 1
+                for part in typed_value(item.item):
+                    yield DynamicContext(item, part, cnt)
+                    cnt += 1
+
+            yield from rescope_sequence(work(), stream=stream)
+
+        elif False:  # function except array
+            raise TypeError("Functions/maps are illegal to atomize!")
+        elif False:  # Array
+            # Atomize content of array, recursively, (ie flatten arrays while atomizing content)
+            assert False, "Not implemented"
 
 
 def peek_atomic(sequence: ItemGenerator) -> Tuple[ItemGenerator, Optional[DynamicContext]]:
@@ -114,7 +151,7 @@ def peek_atomic(sequence: ItemGenerator) -> Tuple[ItemGenerator, Optional[Dynami
     try:
         val1 = next(sequence)
     except StopIteration:
-        return atomic_sequence_generator(val0), val0
+        return atomic_sequence(val0), val0
 
     def restart() -> ItemGenerator:
         yield val0
@@ -122,6 +159,22 @@ def peek_atomic(sequence: ItemGenerator) -> Tuple[ItemGenerator, Optional[Dynami
         yield from sequence
 
     return restart(), None
+
+
+def peek_is_empty(sequence: ItemGenerator) -> Tuple[ItemGenerator, bool]:
+    """
+    Checks if the sequence contains 0 items.
+    """
+    try:
+        val0 = next(sequence)
+    except StopIteration:
+        return empty_sequence_generator(), True
+
+    def restart() -> ItemGenerator:
+        yield val0
+        yield from sequence
+
+    return restart(), False
 
 
 def rescope_sequence(items: ItemGenerator, stream: bool = False) -> ItemGenerator:
@@ -317,7 +370,10 @@ def static_function_call(node: StaticFunctionCall, data: DynamicContext, stream:
 
     for param in sig.parameters:
         print(param)
-    asd()
+
+    # TODO: Detect if there is anything that wants the dynamic context, bind to it with bound
+    # Also do other signature matching and promotion
+    raise NotImplementedError()
 
     if len(sig.parameters) != len(node.arguments):
         # TODO: Should also be detected during AST evaluation start
@@ -335,13 +391,90 @@ def dynamic_function_call():
     ...
 
 
-def compare(node: Compare, data: DynamicContext, stream: bool = False) -> ItemGenerator:
+def value_compare(node: ValueCompare, data: DynamicContext, stream: bool = False) -> ItemGenerator:
     """
-    There is difference in how value and general comparison (eq, ==) are evaluated.
-    https://www.w3.org/TR/xpath-31/#id-comparisons
+    https://www.w3.org/TR/xpath-31/#id-value-comparisons
     """
     lhs = evaluate_ast_node(node.lhs, data, stream=stream)
     rhs = evaluate_ast_node(node.rhs, data, stream=stream)
+
+    # Step 1: Atomize operands
+    lhs = atomize_sequence(lhs)
+    rhs = atomize_sequence(rhs)
+
+    # Step 2: If any sequence is empty, produce empty sequence
+    lhs, lhs_empty = peek_is_empty(lhs)
+    rhs, rhs_empty = peek_is_empty(rhs)
+    if lhs_empty or rhs_empty:
+        return
+
+    # Step 3: If not atomic, raise type error
+    lhs, lhs_value = peek_atomic(lhs)
+    if not lhs_value:
+        raise TypeError("The left-hand side of the comparison was not atomic")
+    rhs, rhs_value = peek_atomic(rhs)
+    if not rhs_value:
+        raise TypeError("The right-hand side of the comparison was not atomic")
+
+    # Step 4: If an atomized operand is of type xs:untypedAtomic, it is cast to xs:string.
+    #   TODO: Don't ignore this or something
+
+    left, right = lhs_value.item, rhs_value.item
+
+    # Step 5: If the two operands are instances of different primitive types (the 19 primitive types)
+    if type(left) is not type(right):
+        if isinstance(left, str) and isinstance(right, str):
+            #  # types are string or uri
+            left, right = str(left), str(right)
+        elif isinstance(left, float) and isinstance(right, float):
+            # types are float or decimal
+            left, right = float(left), float(right)
+        elif False:
+            # If each operand is an instance of one of the types xs:decimal, xs:float, or xs:double, then both operands are cast to type xs:double.
+            ...
+        else:
+            raise TypeError("Left and right side of comparison are not stringy/floaty")
+
+    # Step 6: Finally, if the types of the operands are a valid combination for the given operator, the operator is applied to the operands.
+    result = value_operator(left, right, node.op)
+    assert isinstance(result, bool), f"The result {result} is of type {type(result)}, what happened??"
+    yield DynamicContext(data, result, 1, 1, None)
+
+
+import operator
+
+OPERATORS: Dict[str, Callable[[Any, Any], Any]] = {
+    "=": operator.eq,
+    "==": operator.eq,
+    "eq": operator.eq,
+    "!=": operator.ne,
+    "ne": operator.ne,
+    ">": operator.gt,
+    "gt": operator.gt,
+    ">=": operator.ge,
+    "ge": operator.ge,
+    "<": operator.lt,
+    "lt": operator.lt,
+    "<=": operator.le,
+    "le": operator.le,
+    "+": operator.add,
+    "-": operator.sub,
+    "*": operator.mul,
+    "/": operator.truediv,
+}
+
+
+def value_operator(a: Any, b: Any, op: str) -> Any:
+    """
+    https://www.w3.org/TR/xpath-31/#mapping
+
+    Keep it simple for now.
+    But how to tabel'ize? There must be a lib for predefined binary operations
+    """
+
+    operator = OPERATORS.get(op, None)
+    assert operator, f"Operator {op} not implemented?"
+    return operator(a, b)
 
 
 def evaluate_ast_node(node: ASTNode, data: DynamicContext, stream: bool = False) -> ItemGenerator:
@@ -362,8 +495,8 @@ def evaluate_ast_node(node: ASTNode, data: DynamicContext, stream: bool = False)
     elif isinstance(node, StaticFunctionCall):
         yield from static_function_call(node, data, stream=stream)
 
-    elif isinstance(node, Compare):
-        yield from compare(node, data, stream=stream)
+    elif isinstance(node, ValueCompare):
+        yield from value_compare(node, data, stream=stream)
 
     else:
         assert False, f"evalute not implemented for nodetype {type(node)}"

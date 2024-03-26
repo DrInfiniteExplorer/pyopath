@@ -6,6 +6,7 @@ import ply.lex
 class PathLexer:
     tokens = (
         ["OR", "AND"]
+        + ["CONCAT", "TO"]
         + ["EQstr", "NEstr", "LTstr", "LEstr", "GTstr", "GEstr"]
         + ["EQsym", "NEsym", "LTsym", "LEsym", "GTsym", "GEsym"]
         + ["IS"]
@@ -32,12 +33,15 @@ class PathLexer:
     t_OR = r"\bor\b"
     t_AND = r"\band\b"
 
-    t_EQstr = r"\beq\b"
-    t_NEstr = r"\bne\b"
-    t_LTstr = r"\blt\b"
-    t_LEstr = r"\ble\b"
-    t_GTstr = r"\bgt\b"
-    t_GEstr = r"\bge\b"
+    t_CONCAT = r"[|][|]"
+    t_TO = r"\s+to\s+"
+
+    t_EQstr = r"\s+eq\s+"
+    t_NEstr = r"\s+ne\s+"
+    t_LTstr = r"\s+lt\s+"
+    t_LEstr = r"\s+le\s+"
+    t_GTstr = r"\s+gt\s+"
+    t_GEstr = r"\s+ge\s+"
 
     t_EQsym = r"==?"
     t_NEsym = r"!="
@@ -101,7 +105,11 @@ class PathLexer:
 
     TestNames = ["element", "node", "text"]
 
-    t_STRING = r"(\"([^\\\n]|(\\.))*?\")" + r"|" + r"(\'([^\\\n]|(\\.))*?\')"
+    def t_STRING(self, t):
+        r"""(\"([^\\\n]|(\\.))*?\")|(\'([^\\\n]|(\\.))*?\')"""
+        t.value = t.value[1:-1]
+        return t
+
     t_NUMBER = r"[+-]?\d+(\.\d*)?"
 
     literals = "{}[]()@"

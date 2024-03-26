@@ -13,6 +13,7 @@ from pyopath.xpath.AST.ast import (
     PostfixExpr,
     Predicate,
     TextTest,
+    ValueCompare,
 )
 from pyopath.xpath.AST.lexer import lex
 from pyopath.xpath.AST.parser import parse
@@ -59,6 +60,12 @@ test_cases: Sequence[Tuple[str, Any]] = (
     # text-node-test
     ("self::text()", AxisStep("self", TextTest())),
     ("text()", AxisStep("child", TextTest())),
+    # Comparisons
+    ("1 eq 2", ValueCompare(Literal(2), Literal(1), "eq")),
+    # StringConcat expressions
+    # ("5||6||7", None),
+    # to-expresisons
+    # ("9 to 5", None),
     ## Rooted expressions
     # ("/a", ("ROOT", AxisStep("child", NameTest("a")))),
     # ("//a", ("DESCENCANTS", AxisStep("child", NameTest("a")))),

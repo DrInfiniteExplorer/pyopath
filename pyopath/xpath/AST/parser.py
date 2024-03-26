@@ -4,16 +4,18 @@ from pyopath.xpath.AST.ast import (
     AnyKindTest,
     ASTNode,
     AxisStep,
-    Compare,
     Context,
     Expressions,
+    GeneralCompare,
     Literal,
     NameTest,
+    NodeCompare,
     PathOperator,
     PostfixExpr,
     Predicate,
     StaticFunctionCall,
     TextTest,
+    ValueCompare,
 )
 from pyopath.xpath.AST.lexer import PathLexer
 
@@ -75,19 +77,61 @@ class PathParser:
         else:
             p[0] = p[1]
 
-    # Shortcutting StringConcatExpr -> AdditiveExpr
     def p_ComparisonExpr(self, p):
         """
-        ComparisonExpr : AdditiveExpr ValueComp AdditiveExpr
-                       | AdditiveExpr NodeComp AdditiveExpr
-                       | AdditiveExpr
+        ComparisonExpr : StringConcatExpr ValueComp StringConcatExpr
+                       | StringConcatExpr GeneralComp StringConcatExpr
+                       | StringConcatExpr NodeComp StringConcatExpr
+                       | StringConcatExpr
         """
         if len(p) > 2:
-            p[0] = Compare(p[3], p[1], p[2])
+            if p[2][0] == "VALUE":
+                p[0] = ValueCompare(p[3], p[1], p[2][1].strip())
+            elif p[2][0] == "GENERAL":
+                p[0] = GeneralCompare(p[3], p[1], p[2][1].strip())
+            elif p[2][0] == "NODE":
+                p[0] = NodeCompare(p[3], p[1], p[2][1].strip())
+            else:
+                assert False, f"What is this? {p[2]}"
         else:
             p[0] = p[1]
 
-    def p_ValueComp(self, p):  # Also GeneralComp
+    def p_StringConcatExpr(self, p):
+        """
+        StringConcatExpr : StringConcatList
+        """
+        if isinstance(p[1], list):
+            assert False, "Not implemented"
+            # p[0] = StringConcat(p[1])
+        else:
+            p[0] = p[1]
+
+    def p_StringConcatList(self, p):
+        """
+        StringConcatList : StringConcatList CONCAT RangeExpr
+                         | RangeExpr
+        """
+        if len(p) > 2:
+            p[0] = p[1]
+            if isinstance(p[0], list):
+                p[0].append(p[3])
+            else:
+                p[0] = [p[1], p[3]]
+
+        else:
+            p[0] = p[1]
+
+    def p_RangeExpr(self, p):
+        """
+        RangeExpr : AdditiveExpr TO AdditiveExpr
+                  | AdditiveExpr
+        """
+        if len(p) > 2:
+            assert False, "Not implemented"
+        else:
+            p[0] = p[1]
+
+    def p_ValueComp(self, p):
         """
         ValueComp : EQstr
                   | NEstr
@@ -95,20 +139,25 @@ class PathParser:
                   | LEstr
                   | GTstr
                   | GEstr
-                  | EQsym
-                  | NEsym
-                  | LTsym
-                  | LEsym
-                  | GTsym
-                  | GEsym
         """
-        p[0] = p[1]
+        p[0] = ("VALUE", p[1])
+
+    def p_GeneralComp(self, p):
+        """
+        GeneralComp : EQsym
+                    | NEsym
+                    | LTsym
+                    | LEsym
+                    | GTsym
+                    | GEsym
+        """
+        p[0] = ("GENERAL", p[1])
 
     def p_NodeComp(self, p):
         """
         NodeComp : IS
         """
-        p[0] = p[1]
+        p[0] = ("NODE", p[1])
 
     def p_AdditiveExpr(self, p):
         """
@@ -532,8 +581,8 @@ class PathParser:
             "GEsym",
             "IS",
         ),
-        # ('left', 'CONCAT'),
-        # (NA, 'TO'),
+        ("left", "CONCAT"),
+        (NA, "TO"),
         ("left", "+", "-"),
         ("left", "*", "DIV", "IDIV", "MOD"),
         (EITHER, "|", "UNION"),

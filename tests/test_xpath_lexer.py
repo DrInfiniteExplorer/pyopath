@@ -15,6 +15,10 @@ test_cases: Sequence[Tuple[str, Any]] = (
     ("//a", (("DOUBLESLASH", "//"), ("EQNAME", "a"))),
     ("text()", (("TEXT", "text"), ("(", "("), (")", ")"))),
     ("a==b", (("EQNAME", "a"), ("EQsym", "=="), ("EQNAME", "b"))),
+    ("a||b||c", (("EQNAME", "a"), ("CONCAT", "||"), ("EQNAME", "b"), ("CONCAT", "||"), ("EQNAME", "c"))),
+    ("9 to 5", (("NUMBER", "9"), ("TO", " to "), ("NUMBER", "5"))),
+    ("'hello'", (("STRING", "hello"),)),
+    ('"hello"', (("STRING", "hello"),)),
 )
 
 

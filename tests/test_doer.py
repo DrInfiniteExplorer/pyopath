@@ -51,8 +51,17 @@ test_xml_cases: Sequence[Tuple[str, Any, Any]] = (
     ("country[1]", root, [first_country]),
     # Paths
     ("country/rank", root, all_ranks),
+    # Obtaining text results
     ("country/rank/text()", root, ["1", "4", "68"]),
-    ("country[rank/text()='1']/year/text()", root, ["1", "4", "68"]),
+    # Conditional
+    ("2 eq 2", root, [True]),
+    ("2 eq 3", root, [False]),
+    # ("'2' eq 2", root, [False]), # Raises TypeError as expected!
+    ("'2' eq '2'", root, [True]),
+    ("'2' eq '3'", root, [False]),
+    # Complex!
+    ("country[1]/rank/text() eq '1'", root, [True]),
+    ("country[rank/text() eq '1']/year/text()", root, ["2008"]),
 )
 
 
