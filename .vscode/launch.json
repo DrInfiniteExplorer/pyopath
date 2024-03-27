@@ -9,7 +9,7 @@
             "type":"debugpy",
             "request":"launch",
             "module":"pytest",
-            "args": ["--doctest-modules", "-v", "--failed-first"],
+            "args": ["-v", "--failed-first"],
             "justMyCode":true,
             
         },
@@ -18,7 +18,7 @@
             "type":"debugpy",
             "request":"launch",
             "module":"pytest",
-            "args": ["--doctest-modules", "-v", "-k", "${input:testName}"],
+            "args": ["-v", "-k", "${input:testName}"],
             "justMyCode":true,
         }
     ],

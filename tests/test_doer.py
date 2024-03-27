@@ -1,4 +1,3 @@
-# import xml.etree.ElementTree as ET
 import xml.etree.ElementTree as XMLET
 from typing import Any, List, Sequence, Tuple
 
@@ -6,6 +5,7 @@ import lxml.etree as LXMLET
 import pytest
 
 import pyopath
+import pyopath.nodewrappers.etree
 
 basic_xml_str = """
 <data asd="dsa">
