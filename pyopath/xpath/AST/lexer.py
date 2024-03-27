@@ -112,7 +112,7 @@ class PathLexer:
 
     t_NUMBER = r"[+-]?\d+(\.\d*)?"
 
-    literals = "{}[]()@"
+    literals = "{}[]()@$"
 
     def t_EQNAME(self, t):
         r"[a-zA-Z]\w*"

@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as XMLET
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import lxml.etree as LXMLET
 import pytest
@@ -49,43 +49,60 @@ def all_ranks(root: Any) -> List[Any]:
     return list(root.iterfind("country/rank"))
 
 
-test_xml_cases: Sequence[Tuple[int, str, Any]] = (
+VarType = Optional[Dict[str, Any]]
+
+
+class DummyType: ...
+
+
+DummyVar = DummyType()
+
+test_xml_cases: Sequence[Tuple[int, str, Any, VarType]] = (
     # Abbreviated axis
-    (1, "@asd", ["dsa"]),
-    (1, "country", all_countries),
+    (1, "@asd", ["dsa"], None),
+    (1, "country", all_countries, None),
     # Full axis
-    (1, "attribute::asd", ["dsa"]),
-    (1, "child::country", all_countries),
+    (1, "attribute::asd", ["dsa"], None),
+    (1, "child::country", all_countries, None),
     # Conditionals
-    (1, "country[@name]", all_countries),
-    (1, "country[1]", first_country),
+    (1, "country[@name]", all_countries, None),
+    (1, "country[1]", first_country, None),
     # Paths
-    (1, "country/rank", all_ranks),
+    (1, "country/rank", all_ranks, None),
     # Obtaining text results
-    (1, "country/rank/text()", ["1", "4", "68"]),
+    (1, "country/rank/text()", ["1", "4", "68"], None),
     # Conditional
-    (3, "2 eq 2", [True]),
-    (3, "2 eq 3", [False]),
-    # ("'2' eq 2", [False]), # Raises TypeError as expected!
-    (3, "'2' eq '2'", [True]),
-    (3, "'2' eq '3'", [False]),
+    (3, "2 eq 2", [True], None),
+    (3, "2 eq 3", [False], None),
+    # ("'2' eq 2", [False], None), # Raises TypeError as expected!
+    (3, "'2' eq '2'", [True], None),
+    (3, "'2' eq '3'", [False], None),
+    # Variables
+    (1, "$var", ["hello"], dict(var="hello")),
+    (1, "$var", root, dict(var=lambda x: root(x)[0])),  # value=element
+    (1, "$var", root, dict(var=root)),  # value=element, but through singleton-unwrap of argument, since those are equal
+    # (1, "$var", all_countries, dict(var=all_countries)), Need to implement proper array/sequence handling
+    (1, "$var", [2], dict(var=2)),
+    (-1, "$var", [DummyVar], dict(var=DummyVar)),  # -1 = don't support random types in pure lxml / xpath
     # Complex!
-    (3, "country[1]/rank/text() eq '1'", [True]),
-    (3, "country[rank/text() eq '1']/year/text()", ["2008"]),
+    (3, "country[1]/rank/text() eq '1'", [True], None),
+    (3, "country[rank/text() eq '1']/year/text()", ["2008"], None),
     # test?
-    (1, ".", root),
-    (1, "./.", root),
-    (1, "country/.", all_countries),
+    (1, ".", root, None),
+    (1, "./.", root, None),
+    (1, "country/.", all_countries, None),
 )
 
 basic_xml_data = XMLET.fromstring(basic_xml_str)
 basic_lxml_data = LXMLET.fromstring(basic_xml_str)
 
 
-@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
-def test_doer_xml(lang_version: int, query: str, reference: Any):
+@pytest.mark.parametrize("lang_version, query, reference, variables", test_xml_cases)
+def test_doer_xml(lang_version: int, query: str, reference: Any, variables: VarType):
     model = basic_xml_data
-    res = pyopath.query(model, query)
+    if variables:
+        variables = {key: value(model) if callable(value) else value for key, value in variables.items()}
+    res = pyopath.query(model, query, variables=variables)
     ref: Any = reference(model) if callable(reference) else reference
 
     if res != ref:
@@ -94,10 +111,12 @@ def test_doer_xml(lang_version: int, query: str, reference: Any):
         assert res == ref
 
 
-@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
-def test_doer_lxml(lang_version: int, query: str, reference: Any):
+@pytest.mark.parametrize("lang_version, query, reference, variables", test_xml_cases)
+def test_doer_lxml(lang_version: int, query: str, reference: Any, variables: VarType):
     model = basic_lxml_data
-    res = pyopath.query(model, query)
+    if variables:
+        variables = {key: value(model) if callable(value) else value for key, value in variables.items()}
+    res = pyopath.query(model, query, variables=variables)
     ref: Any = reference(model) if callable(reference) else reference
 
     if res != ref:
@@ -106,12 +125,17 @@ def test_doer_lxml(lang_version: int, query: str, reference: Any):
         assert res == ref
 
 
-@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
-def test_verify_testcases(lang_version: int, query: str, reference: Any):
+@pytest.mark.parametrize("lang_version, query, reference, variables", test_xml_cases)
+def test_verify_testcases(lang_version: int, query: str, reference: Any, variables: VarType):
     if lang_version != 1:
         pytest.skip("lxml only supports 1.0 xpath features, can't verify this test")
     model = basic_lxml_data
-    res = model.xpath(query)
+    if variables:
+        variables = {key: value(model) if callable(value) else value for key, value in variables.items()}
+    res = model.xpath(query, **(variables or dict()))
+    if isinstance(res, (str, int, float)):
+        res = [res]
+
     ref: Any = reference(model) if callable(reference) else reference
 
     if res != ref:

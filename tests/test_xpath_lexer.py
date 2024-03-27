@@ -19,6 +19,7 @@ test_cases: Sequence[Tuple[str, Any]] = (
     ("9 to 5", (("NUMBER", "9"), ("TO", " to "), ("NUMBER", "5"))),
     ("'hello'", (("STRING", "hello"),)),
     ('"hello"', (("STRING", "hello"),)),
+    ("$variable", (("$", "$"), ("EQNAME", "variable"))),
 )
 
 

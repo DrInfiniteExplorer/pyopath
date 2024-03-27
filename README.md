@@ -41,28 +41,28 @@ To begin using PyOPath in your project:
 
 ### Example
 
-    ```python
-    # Assume we have a data structure 'my_data' representing a nested dictionary
+```python
+# Assume we have a data structure 'my_data' representing a nested dictionary
 
-    my_data = {
-        "name": "John",
-        "age": 30,
-        "address": {
-            "city": "New York",
-            "zipcode": "10001"
-        },
-        "pets": [
-            {"type": "dog", "name": "Buddy"},
-            {"type": "cat", "name": "Whiskers"}
-        ]
-    }
+my_data = {
+    "name": "John",
+    "age": 30,
+    "address": {
+        "city": "New York",
+        "zipcode": "10001"
+    },
+    "pets": [
+        {"type": "dog", "name": "Buddy"},
+        {"type": "cat", "name": "Whiskers"}
+    ]
+}
 
-    # Querying the data structure with PyOPath
+# Querying the data structure with PyOPath
 
-    result = pyopath.query(my_data, "/address/city")
-    print(result)  # Output: "New York"
+result = pyopath.query(my_data, "/address/city")
+print(result)  # Output: "New York"
 
-    ```
+```
 
 ### Roadmap
 

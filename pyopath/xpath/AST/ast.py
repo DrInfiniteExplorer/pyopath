@@ -264,6 +264,11 @@ class Literal(ASTNode):
 
 
 @Pretty
+class VarRef(ASTNode):
+    name: str
+
+
+@Pretty
 class StaticFunctionCall(ASTNode):
     name: str
     arguments: List[Expressions]
@@ -271,8 +276,8 @@ class StaticFunctionCall(ASTNode):
 
 @Pretty
 class ValueCompare(ASTNode):
-    lhs: Expressions
-    rhs: Expressions
+    lhs: ASTNode
+    rhs: ASTNode
     op: str
 
 

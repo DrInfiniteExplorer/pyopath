@@ -14,6 +14,7 @@ from pyopath.xpath.AST.ast import (
     Predicate,
     TextTest,
     ValueCompare,
+    VarRef,
 )
 from pyopath.xpath.AST.lexer import lex
 from pyopath.xpath.AST.parser import parse
@@ -62,6 +63,8 @@ test_cases: Sequence[Tuple[str, Any]] = (
     ("text()", AxisStep("child", TextTest())),
     # Comparisons
     ("1 eq 2", ValueCompare(Literal(2), Literal(1), "eq")),
+    # Variable reference
+    ("$variable", VarRef("variable")),
     # StringConcat expressions
     # ("5||6||7", None),
     # to-expresisons

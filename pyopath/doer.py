@@ -32,6 +32,7 @@ from pyopath.xpath.AST.ast import (
     StaticFunctionCall,
     TextTest,
     ValueCompare,
+    VarRef,
 )
 from pyopath.xpath.AST.parser import parse
 
@@ -46,13 +47,13 @@ class StaticContext:
     varibles: Dict[str, Any]
     functions: Dict[str, Callable[..., Any]]
 
-    def __init__(self):
-        self.varibles = dict()
+    def __init__(self, variables: Optional[Dict[str, Any]] = None):
+        self.varibles = (variables or dict()).copy()
         self.functions = dict()
 
     def copy_static_context(self, other: "StaticContext") -> Self:
-        self.varibles = dict(other.varibles)
-        self.functions = dict(other.functions)
+        self.varibles = other.varibles.copy()
+        self.functions = other.functions.copy()
         return self
 
 
@@ -477,6 +478,16 @@ def value_operator(a: Any, b: Any, op: str) -> Any:
     return operator(a, b)
 
 
+def variable_reference(node: VarRef, data: DynamicContext, stream: bool = False) -> ItemGenerator:
+    name = node.name
+    value = data.varibles.get(name, None)
+    if value is None:
+        # Should be detected during AST evaluation start
+        raise ValueError(f"Variable {name} does not exist")
+
+    yield DynamicContext(data, value, 1, 1, name)
+
+
 def evaluate_ast_node(node: ASTNode, data: DynamicContext, stream: bool = False) -> ItemGenerator:
     assert isinstance(node, ASTNode), f"{node} is not an ASTNode"
     assert isinstance(data, DynamicContext), f"{data} is not a DynamicContext"
@@ -498,6 +509,9 @@ def evaluate_ast_node(node: ASTNode, data: DynamicContext, stream: bool = False)
     elif isinstance(node, ValueCompare):
         yield from value_compare(node, data, stream=stream)
 
+    elif isinstance(node, VarRef):
+        yield from variable_reference(node, data, stream=stream)
+
     else:
         assert False, f"evalute not implemented for nodetype {type(node)}"
 
@@ -507,15 +521,30 @@ def evaluate(node: ASTNode, data: DynamicContext) -> Sequence[Any]:
 
 
 def query(
-    data: Any, query: str, unwrap_nodes: bool = True, static_context: Optional[StaticContext] = None
+    data: Any,
+    query: str,
+    unwrap_nodes: bool = True,
+    static_context: Optional[StaticContext] = None,
+    variables: Optional[Dict[str, Any]] = None,
 ) -> Sequence[Any]:
     ast: ASTNode = parse(query)
 
     wrapped = wrap(data)
     assert wrapped, f"Could not wrap type {type(data)}"
 
+    variables = variables or dict()
+
+    def wrap_var(var: Any) -> Any:
+        if isinstance(var, Sequence) and not isinstance(var, (str, bytes)):
+            if len(var) == 1:
+                return wrap_var(var[0])
+            assert False, "Need to implement proper array/sequence handling"
+        return wrap(var) or var
+
+    variables = {key: wrap_var(value) for key, value in variables.items()}
+
     if not static_context:
-        static_context = StaticContext()
+        static_context = StaticContext(variables=variables)
         static_context.functions["string"] = string_value
 
     context: DynamicContext = DynamicContext(static_context, wrapped, 1, 1)

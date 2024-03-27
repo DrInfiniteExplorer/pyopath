@@ -16,6 +16,7 @@ from pyopath.xpath.AST.ast import (
     StaticFunctionCall,
     TextTest,
     ValueCompare,
+    VarRef,
 )
 from pyopath.xpath.AST.lexer import PathLexer
 
@@ -510,13 +511,11 @@ class PathParser:
         """
         VarRef : '$' VarName
         """
-        assert False, "Not implemented"
-        p[0] = ("VARREF", p[1])
+        p[0] = VarRef(p[2])
 
     def p_VarName(self, p):
         "VarName : EQNAME"
-        assert False, "Not implemented"
-        p[0] = ("VARNAME", p[1])
+        p[0] = p[1]
 
     def p_ParenthesizedExpr(self, p):
         """
