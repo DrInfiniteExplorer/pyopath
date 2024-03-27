@@ -1,8 +1,24 @@
-from typing import Any, Generator, Optional
-from xml.etree.ElementTree import Element
+from typing import Any, Dict, Generator, Optional, Union
+from xml.etree.ElementTree import Element as XMLElement
+
+from typing_extensions import TypeAlias
 
 from pyopath.nodewrappers.base import AttributeBase, ElementBase, NodeBase, TextBase
 from pyopath.nodewrappers.registry import register_nodetype
+
+try:
+    from lxml.etree import _Element as LXMLElement  # type: ignore
+except ImportError:
+
+    class LXMLElement:
+        tag: str
+        attrib: Dict[str, str]
+        text: str
+
+        def __iter__(self) -> Generator["LXMLElement", None, None]: ...
+
+
+Element: TypeAlias = Union[XMLElement, LXMLElement]
 
 
 class EtreeElement(ElementBase):
@@ -86,9 +102,10 @@ class EtreeText(TextBase):
         return self.string_value()
 
 
-def wrap_etree_element(obj: Any) -> EtreeElement:
-    assert isinstance(obj, Element)
+def wrap_xml_element(obj: Any) -> EtreeElement:
+    assert isinstance(obj, (XMLElement, LXMLElement))
     return EtreeElement(None, obj)
 
 
-register_nodetype(Element, wrap_etree_element)
+register_nodetype(XMLElement, wrap_xml_element)
+register_nodetype(LXMLElement, wrap_xml_element)

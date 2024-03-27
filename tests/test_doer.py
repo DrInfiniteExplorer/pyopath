@@ -1,6 +1,8 @@
-import xml.etree.ElementTree as ET
-from typing import Any, Sequence, Tuple
+# import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as XMLET
+from typing import Any, List, Sequence, Tuple
 
+import lxml.etree as LXMLET
 import pytest
 
 import pyopath
@@ -30,48 +32,92 @@ basic_xml_str = """
 </data>
 """
 
-basic_xml_data = ET.fromstring(basic_xml_str)
 
-root = basic_xml_data
+def root(root_obj: Any) -> List[Any]:
+    return [root_obj]
 
-all_countries = list(root.iter("country"))
-first_country = all_countries[0]
 
-all_ranks = list(root.iterfind("country/rank"))
+def all_countries(root: Any) -> List[Any]:
+    return list(root.iter("country"))
 
-test_xml_cases: Sequence[Tuple[str, Any, Any]] = (
+
+def first_country(root: Any) -> List[Any]:
+    return [all_countries(root)[0]]
+
+
+def all_ranks(root: Any) -> List[Any]:
+    return list(root.iterfind("country/rank"))
+
+
+test_xml_cases: Sequence[Tuple[int, str, Any]] = (
     # Abbreviated axis
-    ("@asd", root, ["dsa"]),
-    ("country", root, all_countries),
+    (1, "@asd", ["dsa"]),
+    (1, "country", all_countries),
     # Full axis
-    ("attribute::asd", root, ["dsa"]),
-    ("child::country", root, all_countries),
+    (1, "attribute::asd", ["dsa"]),
+    (1, "child::country", all_countries),
     # Conditionals
-    ("country[@name]", root, all_countries),
-    ("country[1]", root, [first_country]),
+    (1, "country[@name]", all_countries),
+    (1, "country[1]", first_country),
     # Paths
-    ("country/rank", root, all_ranks),
+    (1, "country/rank", all_ranks),
     # Obtaining text results
-    ("country/rank/text()", root, ["1", "4", "68"]),
+    (1, "country/rank/text()", ["1", "4", "68"]),
     # Conditional
-    ("2 eq 2", root, [True]),
-    ("2 eq 3", root, [False]),
-    # ("'2' eq 2", root, [False]), # Raises TypeError as expected!
-    ("'2' eq '2'", root, [True]),
-    ("'2' eq '3'", root, [False]),
+    (3, "2 eq 2", [True]),
+    (3, "2 eq 3", [False]),
+    # ("'2' eq 2", [False]), # Raises TypeError as expected!
+    (3, "'2' eq '2'", [True]),
+    (3, "'2' eq '3'", [False]),
     # Complex!
-    ("country[1]/rank/text() eq '1'", root, [True]),
-    ("country[rank/text() eq '1']/year/text()", root, ["2008"]),
+    (3, "country[1]/rank/text() eq '1'", [True]),
+    (3, "country[rank/text() eq '1']/year/text()", ["2008"]),
+    # test?
+    (1, ".", root),
+    (1, "./.", root),
+    (1, "country/.", all_countries),
 )
 
+basic_xml_data = XMLET.fromstring(basic_xml_str)
+basic_lxml_data = LXMLET.fromstring(basic_xml_str)
 
-@pytest.mark.parametrize("query, model, reference", test_xml_cases)
-def test_doer(query: str, model: Any, reference: Any):
+
+@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
+def test_doer_xml(lang_version: int, query: str, reference: Any):
+    model = basic_xml_data
     res = pyopath.query(model, query)
-    if res != reference:
+    ref: Any = reference(model) if callable(reference) else reference
+
+    if res != ref:
         print(f"Query: {query}")
         print(f"Res: {res}")
-        assert res == reference
+        assert res == ref
+
+
+@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
+def test_doer_lxml(lang_version: int, query: str, reference: Any):
+    model = basic_lxml_data
+    res = pyopath.query(model, query)
+    ref: Any = reference(model) if callable(reference) else reference
+
+    if res != ref:
+        print(f"Query: {query}")
+        print(f"Res: {res}")
+        assert res == ref
+
+
+@pytest.mark.parametrize("lang_version, query, reference", test_xml_cases)
+def test_verify_testcases(lang_version: int, query: str, reference: Any):
+    if lang_version != 1:
+        pytest.skip("lxml only supports 1.0 xpath features, can't verify this test")
+    model = basic_lxml_data
+    res = model.xpath(query)
+    ref: Any = reference(model) if callable(reference) else reference
+
+    if res != ref:
+        print(f"Query: {query}")
+        print(f"Res: {res}")
+        assert res == ref
 
 
 basic_py_data = {

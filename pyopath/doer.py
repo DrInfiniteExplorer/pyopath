@@ -512,6 +512,7 @@ def query(
     ast: ASTNode = parse(query)
 
     wrapped = wrap(data)
+    assert wrapped, f"Could not wrap type {type(data)}"
 
     if not static_context:
         static_context = StaticContext()
